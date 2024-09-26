@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ma Boutique en Ligne</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
     <style>
         :root {
             --primary-color: #4a90e2;
@@ -249,6 +249,7 @@
             color: var(--primary-color);
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.24/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
     <header>
@@ -270,105 +271,206 @@
         <button onclick="generatePDF()">Télécharger le récapitulatif PDF</button>
     </div>
 
-    <!-- Boutons de connexion/déconnexion -->
-    <button id="login-btn" onclick="window.netlifyIdentity.open()">Se connecter</button>
-    <button id="logout-btn" onclick="window.netlifyIdentity.logout()">Se déconnecter</button>
-    <div id="user-info"></div>
-
     <script>
-        // Initialisation de Netlify Identity
-        window.netlifyIdentity = window.netlifyIdentity || function (e) {
-            window.netlifyIdentity.on("init", function (user) {
-                if (!user) {
-                    window.netlifyIdentity.on("login", function (user) {
-                        document.getElementById('user-info').innerHTML = `
-                            <p>Bienvenue, ${user.user_metadata.full_name}!</p>
-                            <p>Email: ${user.email}</p>
-                        `;
-                        window.netlifyIdentity.close(); // Fermer le widget
-                    });
-                    window.netlifyIdentity.on("logout", function () {
-                        document.getElementById('user-info').innerHTML = '';
-                        console.log('Utilisateur déconnecté');
-                    });
-                }
-            });
-        };
+        // Contenu de la page d'accueil
+        const homePage = `
+            <h2>Bienvenue dans notre boutique</h2>
+            <p>Découvrez nos produits exceptionnels !</p>
+        `;
 
-        // Fonction de navigation
-        function navigate(page) {
-            const content = document.getElementById('content');
-            if (page === 'home') {
-                content.innerHTML = `<h2>Accueil</h2><p>Bienvenue dans notre boutique en ligne !</p>`;
-            } else if (page === 'products') {
-                content.innerHTML = `
-                    <h2>Produits</h2>
-                    <div id="product-list" class="fade-in">
-                        <div class="product">
-                            <h3>Produit 1</h3>
-                            <p>Description du produit 1.</p>
-                            <button onclick="addToCart('Produit 1', 10)">Ajouter au panier</button>
-                        </div>
-                        <div class="product">
-                            <h3>Produit 2</h3>
-                            <p>Description du produit 2.</p>
-                            <button onclick="addToCart('Produit 2', 15)">Ajouter au panier</button>
-                        </div>
-                    </div>`;
-            } else if (page === 'order') {
-                content.innerHTML = `
-                    <h2>Commander</h2>
-                    <div id="order-form">
-                        <label for="name">Nom:</label>
-                        <input type="text" id="name" required>
-                        <label for="email">Email:</label>
-                        <input type="email" id="email" required>
-                        <label for="address">Adresse:</label>
-                        <textarea id="address" required></textarea>
-                        <button onclick="submitOrder()">Passer commande</button>
-                    </div>`;
-            }
+        // Contenu de la page des produits
+        const productsPage = `
+            <h2>Nos Produits</h2>
+            <div id="search-bar">
+                <input type="text" id="search-input" placeholder="Rechercher un produit">
+                <button onclick="searchProducts()">Rechercher</button>
+            </div>
+            <div id="categories">
+                <button onclick="filterProducts('all')">Tous</button>
+                <button onclick="filterProducts('electronics')">Électronique</button>
+                <button onclick="filterProducts('clothing')">Vêtements</button>
+            </div>
+            <div id="product-list"></div>
+        `;
+
+        // Contenu de la page de commande
+        const orderPage = `
+            <h2>Passer une commande</h2>
+            <form id="order-form">
+                <label for="name">Nom :</label>
+                <input type="text" id="name" required>
+                <label for="email">Email :</label>
+                <input type="email" id="email" required>
+                <label for="address">Adresse :</label>
+                <textarea id="address" required></textarea>
+                <button type="submit">Commander</button>
+            </form>
+        `;
+
+        // Liste des produits
+        const products = [
+            { id: 1, name: "Smartphone", price: 300, category: "electronics" },
+            { id: 2, name: "Laptop", price: 800, category: "electronics" },
+            { id: 3, name: "T-shirt", price: 20, category: "clothing" },
+            { id: 4, name: "Jeans", price: 50, category: "clothing" },
+        ];
+
+        // Fonction pour afficher les produits
+        function displayProducts(productsToShow = products) {
+            const productList = document.getElementById('product-list');
+            productList.innerHTML = '';
+            productsToShow.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'product fade-in';
+                productDiv.innerHTML = `
+                    <h3>${product.name}</h3>
+                    <p>Prix : ${product.price}€</p>
+                    <p>Catégorie : ${product.category}</p>
+                    <button onclick="addToCart(${product.id}, '${product.name}', ${product.price})">Ajouter au panier</button>
+                `;
+                productList.appendChild(productDiv);
+            });
         }
 
-        // Gérer le panier
+        // Fonction pour changer le contenu de la page
+        function navigate(page) {
+            const content = document.getElementById('content');
+            content.style.opacity = '0';
+            setTimeout(() => {
+                switch(page) {
+                    case 'home':
+                        content.innerHTML = homePage;
+                        break;
+                    case 'products':
+                        content.innerHTML = productsPage;
+                        displayProducts();
+                        break;
+                    case 'order':
+                        content.innerHTML = orderPage;
+                        document.getElementById('order-form').addEventListener('submit', submitOrder);
+                        break;
+                }
+                content.style.opacity = '1';
+            }, 300);
+        }
+
+        // Initialiser la page d'accueil
+        navigate('home');
+
+        // Gestion du panier
         let cart = [];
-        function addToCart(product, price) {
-            cart.push({ product, price });
+        function addToCart(id, name, price) {
+            cart.push({id, name, price});
+            updateCart();
+        }
+
+        function removeFromCart(index) {
+            cart.splice(index, 1);
             updateCart();
         }
 
         function updateCart() {
             const cartItems = document.getElementById('cart-items');
+            const cartTotal = document.getElementById('cart-total');
             cartItems.innerHTML = '';
             let total = 0;
-
-            cart.forEach(item => {
-                total += item.price;
+            cart.forEach((item, index) => {
                 const li = document.createElement('li');
-                li.textContent = `${item.product} - ${item.price}€`;
+                li.innerHTML = `
+                    <span>${item.name} - ${item.price}€</span>
+                    <button onclick="removeFromCart(${index})">Supprimer</button>
+                `;
                 cartItems.appendChild(li);
+                total += item.price;
             });
-
-            document.getElementById('cart-total').textContent = total.toFixed(2);
+            cartTotal.textContent = total;
         }
 
+        // Fonction pour ouvrir/fermer le panier
         function toggleCart() {
             const cart = document.getElementById('cart');
             cart.classList.toggle('open');
         }
 
-        function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text('Récapitulatif de la commande', 10, 10);
-            cart.forEach((item, index) => {
-                doc.text(`${index + 1}. ${item.product} - ${item.price}€`, 10, 20 + (index * 10));
-            });
-            doc.text(`Total: ${cart.reduce((acc, item) => acc + item.price, 0).toFixed(2)}€`, 10, 20 + (cart.length * 10));
-            doc.save('recap_commande.pdf');
+        // Fonction de recherche
+        function searchProducts() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const filteredProducts = products.filter(product => 
+                product.name.toLowerCase().includes(searchTerm)
+            );
+            displayProducts(filteredProducts);
         }
 
-        window.netlifyIdentity.init();
+        // Fonction de filtrage par catégorie
+        function filterProducts(category) {
+            const filteredProducts = category === 'all' ? products : products.filter(product => product.category === category);
+            displayProducts(filteredProducts);
+        }
+
+        // Fonction pour soumettre la commande
+        function submitOrder(e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const address = document.getElementById('address').value;
+            alert(`Commande passée pour ${name} (${email}) à l'adresse : ${address}\nTotal : ${document.getElementById('cart-total').textContent}€`);
+            generatePDF();
+            cart = []; // Réinitialiser le panier après la commande
+            updateCart();
+        }
+            /// La petite particularité qui fait plaisir////
+            function generatePDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    // En-tête personnalisé avec vos informations
+    doc.setFontSize(20);
+    doc.text('Récapitulatif de commande', 10, 20);
+
+    // Informations personnelles
+    doc.setFontSize(12);
+    doc.text('Nom : [Votre nom]', 10, 30); // Remplacez par votre nom
+    doc.text('Prénom : [Votre prénom]', 10, 40); // Remplacez par votre prénom
+    doc.text('Adresse légale : [Votre adresse]', 10, 50); // Remplacez par votre adresse
+    doc.text('Numéro de SIRET : [Votre numéro SIRET]', 10, 60); // Remplacez par votre numéro de SIRET si nécessaire
+    doc.text('Email : [Votre email]', 10, 70); // Remplacez par votre email
+
+    // Coordonnées de l'utilisateur qui a passé la commande
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+    const address = document.getElementById('address').value;
+
+    doc.text(`Commande passée par : ${name}`, 10, 90);
+    doc.text(`Email : ${email}`, 10, 100);
+    doc.text(`Adresse de livraison : ${address}`, 10, 110);
+
+    // Créer un tableau pour les articles dans le panier
+    let items = cart.map((item, index) => [
+        index + 1, 
+        item.name, 
+        item.price + "€"
+    ]);
+
+    doc.autoTable({
+        head: [['#', 'Article', 'Prix']],
+        body: items,
+        startY: 130
+    });
+
+    // Calcul du total
+    const total = cart.reduce((sum, item) => sum + item.price, 0);
+    doc.setFontSize(16);
+    doc.text(`Total: ${total}€`, 10, doc.autoTable.previous.finalY + 10);
+
+    // En-tête ou pied de page pour les informations judiciaires/légales
+    doc.setFontSize(10);
+    doc.text('Informations légales :', 10, doc.autoTable.previous.finalY + 30);
+    doc.text('[Votre nom complet], [Adresse légale], [Numéro de SIRET]', 10, doc.autoTable.previous.finalY + 40); // Remplacez par vos infos judiciaires
+    doc.text('Contact : [Votre email ou numéro de téléphone]', 10, doc.autoTable.previous.finalY + 50);
+
+    // Générer le PDF
+    doc.save('recap-commande.pdf');
+}
     </script>
 </body>
 </html>
