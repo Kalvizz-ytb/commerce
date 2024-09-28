@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ma Boutique en Ligne</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script type="text/javascript" src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -127,24 +128,28 @@
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 1rem;
         }
-        .fade-in {
-            animation: fadeIn 0.5s;
+        #user-info {
+            position: fixed;
+            top: 1rem;
+            right: 4rem;
+            background-color: #4CAF50;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        #login-buttons {
+            display: flex;
+            justify-content: center;
+            margin-top: 1rem;
+        }
+        #login-buttons button {
+            margin: 0 0.5rem;
         }
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
-        }
-        @media (max-width: 768px) {
-            #cart {
-                width: 100%;
-                right: -100%;
-            }
-            #search-bar {
-                flex-direction: column;
-            }
-            #categories {
-                flex-direction: column;
-            }
         }
     </style>
 </head>
@@ -157,6 +162,7 @@
         <a href="#products">Produits</a>
         <a href="#order">Commander</a>
     </nav>
+    <div id="user-info">Non connecté</div>
     <main id="content">
         <!-- Le contenu changera en fonction de la page -->
     </main>
@@ -173,6 +179,10 @@
         const homePage = `
             <h2>Bienvenue dans notre boutique</h2>
             <p>Découvrez nos produits exceptionnels !</p>
+            <div id="login-buttons">
+                <button onclick="netlifyIdentity.open('login')">Se connecter</button>
+                <button onclick="netlifyIdentity.open('signup')">S'inscrire</button>
+            </div>
         `;
 
         // Contenu de la page des produits
@@ -244,25 +254,16 @@
                         break;
                     case 'order':
                         content.innerHTML = orderPage;
-                        document.getElementById('order-form').addEventListener('submit', submitOrder);
                         break;
                 }
                 content.style.opacity = '1';
             }, 300);
         }
 
-        // Initialiser la page d'accueil
-        navigate('home');
-
-        // Gestion du panier
+        // Fonction pour gérer le panier
         let cart = [];
         function addToCart(id, name, price) {
-            cart.push({id, name, price});
-            updateCart();
-        }
-
-        function removeFromCart(index) {
-            cart.splice(index, 1);
+            cart.push({ id, name, price });
             updateCart();
         }
 
@@ -271,87 +272,64 @@
             const cartTotal = document.getElementById('cart-total');
             cartItems.innerHTML = '';
             let total = 0;
-            cart.forEach((item, index) => {
-                const li = document.createElement('li');
-                li.textContent = `${item.name} - ${item.price}€ `;
-                const removeButton = document.createElement('button');
-                removeButton.textContent = 'Supprimer';
-                removeButton.onclick = () => removeFromCart(index);
-                li.appendChild(removeButton);
-                cartItems.appendChild(li);
+            cart.forEach(item => {
+                const listItem = document.createElement('li');
+                listItem.innerText = `${item.name} - ${item.price}€`;
+                cartItems.appendChild(listItem);
                 total += item.price;
             });
-            cartTotal.textContent = total;
+            cartTotal.innerText = total;
         }
 
-        // Fonction pour ouvrir/fermer le panier
-        function toggleCart() {
-            const cart = document.getElementById('cart');
-            cart.classList.toggle('open');
-        }
-
-        // Fonction de recherche
-        function searchProducts() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const filteredProducts = products.filter(product => 
-                product.name.toLowerCase().includes(searchTerm)
-            );
-            displayProducts(filteredProducts);
-        }
-
-        // Fonction de filtrage par catégorie
-        function filterProducts(category) {
-            const filteredProducts = category === 'all' ? products : products.filter(product => product.category === category);
-            displayProducts(filteredProducts);
-        }
-
-        // Fonction pour soumettre la commande
-        function submitOrder(e) {
-            e.preventDefault();
-            const name = document.getElementById('name').value;
-            const email = document.getElementById('email').value;
-            const address = document.getElementById('address').value;
-            alert(`Commande passée pour ${name} (${email}) à l'adresse : ${address}\nTotal : ${document.getElementById('cart-total').textContent}€`);
-            generatePDF();
-            cart = [];
-            updateCart();
-        }
-
-        // Fonction pour générer le PDF
+        // Fonction pour générer un PDF
         function generatePDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            doc.setFontSize(20);
-            doc.text('Récapitulatif de commande', 10, 20);
-            
-            doc.setFontSize(12);
-            let y = 40;
+            const doc = new jspdf.jsPDF();
+            doc.text("Récapitulatif de votre commande", 10, 10);
             cart.forEach((item, index) => {
-                doc.text(`${index + 1}. ${item.name} - ${item.price}€`, 10, y);
-                y += 10;
+                doc.text(`${index + 1}. ${item.name} - ${item.price}€`, 10, 20 + (index * 10));
             });
-            
-            const total = cart.reduce((sum, item) => sum + item.price, 0);
-            doc.setFontSize(16);
-            doc.text(`Total: ${total}€`, 10, y + 10);
-            
-            doc.save('recap-commande.pdf');
+            doc.save("commande.pdf");
         }
 
-        // Ajouter des écouteurs d'événements pour la navigation
-        document.querySelector('a[href="#home"]').addEventListener('click', (e) => {
-            e.preventDefault();
+        // Fonction pour rechercher des produits
+        function searchProducts() {
+            const searchInput = document.getElementById('search-input').value.toLowerCase();
+            const filteredProducts = products.filter(product => product.name.toLowerCase().includes(searchInput));
+            displayProducts(filteredProducts);
+        }
+
+        // Fonction pour filtrer par catégorie
+        function filterProducts(category) {
+            if (category === 'all') {
+                displayProducts(products);
+            } else {
+                const filteredProducts = products.filter(product => product.category === category);
+                displayProducts(filteredProducts);
+            }
+        }
+
+        // Fonction pour afficher/masquer le panier
+        function toggleCart() {
+            const cartElement = document.getElementById('cart');
+            if (cartElement.classList.contains('open')) {
+                cartElement.classList.remove('open');
+            } else {
+                cartElement.classList.add('open');
+            }
+        }
+
+        // Gestion de l'authentification avec Netlify Identity
+        netlifyIdentity.on('login', (user) => {
+            document.getElementById('user-info').innerText = `Connecté en tant que ${user.email}`;
             navigate('home');
         });
-        document.querySelector('a[href="#products"]').addEventListener('click', (e) => {
-            e.preventDefault();
-            navigate('products');
+        netlifyIdentity.on('logout', () => {
+            document.getElementById('user-info').innerText = 'Non connecté';
+            navigate('home');
         });
-        document.querySelector('a[href="#order"]').addEventListener('click', (e) => {
-            e.preventDefault();
-            navigate('order');
-        });
+
+        // Initialisation
+        navigate('home');
     </script>
 </body>
 </html>
