@@ -162,7 +162,7 @@
         <a href="#products">Produits</a>
         <a href="#order">Commander</a>
     </nav>
-    <div id="user-info">Non connecté</div>
+    
     <main id="content">
         <!-- Le contenu changera en fonction de la page -->
     </main>
@@ -317,17 +317,6 @@
                 cartElement.classList.add('open');
             }
         }
-
-        // Gestion de l'authentification avec Netlify Identity
-        netlifyIdentity.on('login', (user) => {
-            document.getElementById('user-info').innerText = `Connecté en tant que ${user.email}`;
-            navigate('home');
-        });
-        netlifyIdentity.on('logout', () => {
-            document.getElementById('user-info').innerText = 'Non connecté';
-            navigate('home');
-        });
-
         // Initialisation
         navigate('home');
     </script>
